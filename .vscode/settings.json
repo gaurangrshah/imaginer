@@ -1,0 +1,20 @@
+{
+  "tsImportSorter.configuration.groupRules": [
+    "^react(-dom)?$",
+    ["^next", "^next/", "^@vercel/"],
+    ["^tailwind-merge", "^tailwind-animate", "^tailwindcss", "^next-themes"],
+    ["^clerk", "^@clerk/"],
+    "^lucide-react",
+    ["^cmdk", "^sonner"],
+    ["^stripe", "^@stripe/"],
+    {},
+    "^@/providers/",
+    ["^@/components/", "^@/components/ui/"],
+    "^@/hooks/",
+    "^[@/]",
+    "^",
+    "^[.]",
+    "^@/(lib|providers)/[^/]*type$",
+    "^[^/]*type$"
+  ]
+}
