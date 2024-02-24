@@ -1,7 +1,5 @@
 'use server';
 
-'use server';
-
 import { revalidatePath } from 'next/cache';
 
 import User from '../db/models/user.model';

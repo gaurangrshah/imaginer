@@ -15,10 +15,12 @@ import { getUserById } from '@/lib/actions/user.actions';
 
 const Credits = async () => {
   const { userId } = auth();
+  console.log("🚀 | CREDITS userId:", userId)
 
   if (!userId) redirect("/sign-in");
 
   const user = await getUserById(userId);
+  console.log("🚀 | CREDITS user:", user)
 
   return (
     <>
