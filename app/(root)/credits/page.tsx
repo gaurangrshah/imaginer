@@ -18,6 +18,7 @@ const Credits = async () => {
   console.log("🚀 | CREDITS userId:", userId)
 
   if (!userId) redirect("/sign-in");
+  console.log("🚀 | CREDITS passed USERID CHECK:", userId)
 
   const user = await getUserById(userId);
   console.log("🚀 | CREDITS user:", user)
