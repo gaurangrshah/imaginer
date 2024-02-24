@@ -4,10 +4,7 @@ import { aspectRatioOptions } from '@/constants';
 
 /* eslint-disable prefer-const */
 /* eslint-disable no-prototype-builtins */
-import {
-  type ClassValue,
-  clsx,
-} from 'clsx';
+import { type ClassValue, clsx } from 'clsx';
 import qs from 'qs';
 
 export function cn(...inputs: ClassValue[]) {
@@ -75,7 +72,12 @@ export function removeKeysFromQuery({ searchParams, keysToRemove }: RemoveUrlQue
   return `${window.location.pathname}?${qs.stringify(currentUrl)}`;
 }
 
-// DEBOUNCE
+/**
+ * Debounces a function by delaying its execution until a certain amount of time has passed without any further calls.
+ * @param func The function to be debounced.
+ * @param delay The delay in milliseconds before the function is executed.
+ * @returns A debounced version of the function.
+ */
 export const debounce = (func: (...args: any[]) => void, delay: number) => {
   let timeoutId: NodeJS.Timeout | null;
   return (...args: any[]) => {
@@ -114,6 +116,12 @@ export const download = (url: string, filename: string) => {
 };
 
 // DEEP MERGE OBJECTS
+/**
+ * Deep merges two objects recursively.
+ * @param obj1 - The first object to merge.
+ * @param obj2 - The second object to merge.
+ * @returns The merged object.
+ */
 export const deepMergeObjects = (obj1: any, obj2: any) => {
   if (obj2 === null || obj2 === undefined) {
     return obj1;
