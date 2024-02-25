@@ -21,13 +21,13 @@ export async function createUser(user: CreateUserParams) {
 
 // READ
 export async function getUserById(userId: string) {
-  console.log('🚀 | getUserById:', userId);
+  console.log('🚀 | getUserById:', userId); //
   try {
     await connectToDatabase();
     console.log('🚀 | connectToDatabase:', 'connected?');
 
     const user = await User.findOne({ clerkId: userId });
-    console.log('🚀 | user:', user);
+    console.log('🚀 | user:', user); // null
 
     if (!user) throw new Error('User not found');
 
