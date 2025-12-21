@@ -61,7 +61,7 @@ export const MediaUploader = ({
 
   return (
     <CldUploadWidget
-      uploadPreset='jsm_imaginer'
+      uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
       options={{
         multiple: false,
         resourceType: "image",

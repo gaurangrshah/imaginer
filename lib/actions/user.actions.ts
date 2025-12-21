@@ -21,13 +21,10 @@ export async function createUser(user: CreateUserParams) {
 
 // READ
 export async function getUserById(userId: string) {
-  console.log('🚀 | getUserById:', userId); //
   try {
     await connectToDatabase();
-    console.log('🚀 | connectToDatabase:', 'connected?');
 
     const user = await User.findOne({ clerkId: userId });
-    console.log('🚀 | user:', user); // null
 
     if (!user) throw new Error('User not found');
 
@@ -80,6 +77,16 @@ export async function deleteUser(clerkId: string) {
 export async function updateCredits(userId: string, creditFee: number) {
   try {
     await connectToDatabase();
+
+    // For credit deductions (negative creditFee), validate sufficient balance
+    if (creditFee < 0) {
+      const user = await User.findById(userId);
+      if (!user) throw new Error('User not found');
+
+      if (user.creditBalance < Math.abs(creditFee)) {
+        throw new Error('Insufficient credits');
+      }
+    }
 
     const updatedUserCredits = await User.findOneAndUpdate(
       { _id: userId },
