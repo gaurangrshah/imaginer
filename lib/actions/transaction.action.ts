@@ -1,14 +1,22 @@
 'use server';
 
-import { redirect } from 'next/navigation';
+/**
+ * Transaction Actions Module
+ *
+ * Server actions for Stripe payment processing and transaction records.
+ * Uses Drizzle ORM with SQLite database.
+ */
 
+import { redirect } from 'next/navigation';
 import Stripe from 'stripe';
 
-import Transaction from '../db/models/transaction.model';
-import { connectToDatabase } from '../db/mongoose';
+import { db, transactions } from '../db';
 import { handleError } from '../utils';
 import { updateCredits } from './user.actions';
 
+/**
+ * Create Stripe checkout session for credit purchase
+ */
 export async function checkoutCredits(transaction: CheckoutTransactionParams) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -30,8 +38,8 @@ export async function checkoutCredits(transaction: CheckoutTransactionParams) {
     ],
     metadata: {
       plan: transaction.plan,
-      credits: transaction.credits,
-      buyerId: transaction.buyerId,
+      credits: String(transaction.credits),
+      buyerId: String(transaction.buyerId), // Convert to string for Stripe metadata
     },
     mode: 'payment',
     success_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/profile`,
@@ -41,17 +49,26 @@ export async function checkoutCredits(transaction: CheckoutTransactionParams) {
   redirect(session.url!);
 }
 
+/**
+ * Create transaction record after successful payment
+ */
 export async function createTransaction(transaction: CreateTransactionParams) {
   try {
-    await connectToDatabase();
+    const [newTransaction] = await db
+      .insert(transactions)
+      .values({
+        stripeId: transaction.stripeId,
+        amount: transaction.amount,
+        plan: transaction.plan,
+        credits: transaction.credits,
+        buyerId: transaction.buyerId,
+      })
+      .returning();
 
-    const newTransaction = await Transaction.create({
-      ...transaction,
-      buyer: transaction.buyerId,
-    });
-
+    // Add credits to user account
     await updateCredits(transaction.buyerId, transaction.credits);
-    return JSON.parse(JSON.stringify(newTransaction));
+
+    return newTransaction;
   } catch (error) {
     handleError(error);
   }
