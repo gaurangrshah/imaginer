@@ -118,7 +118,7 @@ declare type TransformationFormProps = {
   userId: number;
   type: TransformationTypeKey;
   creditBalance: number;
-  data?: IImage | null;
+  data?: any;
   config?: Transformations | null;
 };
 
