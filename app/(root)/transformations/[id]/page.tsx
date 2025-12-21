@@ -14,7 +14,10 @@ import { getImageSize } from '@/lib/utils';
 const ImageDetails = async ({ params: { id } }: SearchParamProps) => {
   const { userId } = auth();
 
-  const image = await getImageById(id);
+  const image = await getImageById(parseInt(id));
+  if (!image) {
+    return <div>Image not found</div>;
+  }
 
   return (
     <>
@@ -80,20 +83,20 @@ const ImageDetails = async ({ params: { id } }: SearchParamProps) => {
             type={image.transformationType}
             title={image.title}
             isTransforming={false}
-            transformationConfig={image.config}
+            transformationConfig={image.config as Transformations | null}
             hasDownload={true}
           />
         </div>
 
-        {userId === image.author.clerkId && (
+        {userId === image.author?.clerkId && (
           <div className="mt-4 space-y-4">
             <Button asChild type="button" className="submit-button capitalize">
-              <Link href={`/transformations/${image._id}/update`}>
+              <Link href={`/transformations/${image.id}/update`}>
                 Update Image
               </Link>
             </Button>
 
-            <DeleteConfirmation imageId={image._id} />
+            <DeleteConfirmation imageId={image.id} />
           </div>
         )}
       </section>

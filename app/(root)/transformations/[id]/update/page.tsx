@@ -33,7 +33,7 @@ const Page = async ({ params: { id } }: SearchParamProps) => {
           userId={user.id}
           type={image.transformationType as TransformationTypeKey}
           creditBalance={user.creditBalance || 0}
-          config={image.config}
+          config={image.config as Transformations | null}
           data={image}
         />
       </section>
