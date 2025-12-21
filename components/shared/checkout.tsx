@@ -19,7 +19,7 @@ export const Checkout = ({
   plan: string;
   amount: number;
   credits: number;
-  buyerId: string;
+  buyerId: number;
 }) => {
   const { toast } = useToast();
 
