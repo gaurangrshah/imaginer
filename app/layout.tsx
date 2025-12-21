@@ -16,7 +16,8 @@ export const metadata: Metadata = {
 };
 
 const UMAMI_WEBSITE_ID = 'e0e6cf68-b853-4e36-8875-3611396ff2e3';
-const UMAMI_URL = process.env.NEXT_PUBLIC_UMAMI_URL;
+// Public URL via Cloudflare tunnel (dev) - see knowledge_base #257 for production setup
+const UMAMI_URL = process.env.NEXT_PUBLIC_UMAMI_URL || 'https://rarely-teens-obtaining-bloom.trycloudflare.com';
 
 export default function RootLayout({
   children,
