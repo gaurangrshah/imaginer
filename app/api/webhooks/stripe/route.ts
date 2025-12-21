@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       amount: amount_total ? amount_total / 100 : 0,
       plan: metadata?.plan || '',
       credits: Number(metadata?.credits) || 0,
-      buyerId: metadata?.buyerId || '',
+      buyerId: Number(metadata?.buyerId) || 0, // Convert from string (Stripe metadata) to number
       createdAt: new Date(),
     };
 

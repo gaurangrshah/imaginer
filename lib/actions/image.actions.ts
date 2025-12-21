@@ -1,72 +1,106 @@
 'use server';
 
+/**
+ * Image Actions Module
+ *
+ * Server actions for image management with Cloudinary integration.
+ * Uses Drizzle ORM with SQLite database.
+ */
+
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-
-import Image from '../db/models/image.model';
-import User from '../db/models/user.model';
-import { connectToDatabase } from '../db/mongoose';
-import { handleError } from '../utils';
+import { eq, desc, inArray, sql, and } from 'drizzle-orm';
 import { v2 as cloudinary } from 'cloudinary';
 
-const populateUser = (query: any) =>
-  query.populate({
-    path: 'author',
-    model: User,
-    select: '_id firstName lastName clerkId',
-  });
+import { db, images, users } from '../db';
+import { handleError } from '../utils';
 
-// ADD IMAGE
+/**
+ * Add a new image to the database
+ */
 export async function addImage({ image, userId, path }: AddImageParams) {
   try {
-    await connectToDatabase();
-
-    const author = await User.findById(userId);
+    // Verify user exists
+    const [author] = await db.select().from(users).where(eq(users.id, userId));
 
     if (!author) {
       throw new Error('User not found');
     }
 
-    const newImage = await Image.create({
-      ...image,
-      author: author._id,
-    });
+    const [newImage] = await db
+      .insert(images)
+      .values({
+        title: image.title,
+        transformationType: image.transformationType,
+        publicId: image.publicId,
+        secureURL: image.secureURL,
+        width: image.width,
+        height: image.height,
+        config: image.config,
+        transformationUrl: image.transformationURL,
+        aspectRatio: image.aspectRatio,
+        prompt: image.prompt,
+        color: image.color,
+        authorId: author.id,
+      })
+      .returning();
 
     revalidatePath(path);
 
-    return JSON.parse(JSON.stringify(newImage));
+    return newImage;
   } catch (error) {
     handleError(error);
   }
 }
 
-// UPDATE IMAGE
+/**
+ * Update an existing image
+ */
 export async function updateImage({ image, userId, path }: UpdateImageParams) {
   try {
-    await connectToDatabase();
+    // Verify image exists and belongs to user
+    const [imageToUpdate] = await db
+      .select()
+      .from(images)
+      .where(eq(images.id, image.id));
 
-    const imageToUpdate = await Image.findById(image._id);
-
-    if (!imageToUpdate || imageToUpdate.author.toHexString() !== userId) {
+    if (!imageToUpdate || imageToUpdate.authorId !== userId) {
       throw new Error('Unauthorized or image not found');
     }
 
-    const updatedImage = await Image.findByIdAndUpdate(imageToUpdate._id, image, { new: true });
+    const [updatedImage] = await db
+      .update(images)
+      .set({
+        title: image.title,
+        transformationType: image.transformationType,
+        publicId: image.publicId,
+        secureURL: image.secureURL,
+        width: image.width,
+        height: image.height,
+        config: image.config,
+        transformationUrl: image.transformationURL,
+        aspectRatio: image.aspectRatio,
+        prompt: image.prompt,
+        color: image.color,
+        updatedAt: new Date(),
+      })
+      .where(eq(images.id, image.id))
+      .returning();
 
     revalidatePath(path);
 
-    return JSON.parse(JSON.stringify(updatedImage));
+    return updatedImage;
   } catch (error) {
     handleError(error);
   }
 }
 
-// DELETE IMAGE
-export async function deleteImage(imageId: string) {
+/**
+ * Delete an image by ID
+ */
+export async function deleteImage(imageId: number) {
   try {
-    await connectToDatabase();
-
-    await Image.findByIdAndDelete(imageId);
+    await db.delete(images).where(eq(images.id, imageId));
   } catch (error) {
     handleError(error);
   } finally {
@@ -74,22 +108,50 @@ export async function deleteImage(imageId: string) {
   }
 }
 
-// GET IMAGE
-export async function getImageById(imageId: string) {
+/**
+ * Get image by ID with author information
+ */
+export async function getImageById(imageId: number) {
   try {
-    await connectToDatabase();
+    const result = await db
+      .select({
+        id: images.id,
+        title: images.title,
+        transformationType: images.transformationType,
+        publicId: images.publicId,
+        secureURL: images.secureURL,
+        width: images.width,
+        height: images.height,
+        config: images.config,
+        transformationUrl: images.transformationUrl,
+        aspectRatio: images.aspectRatio,
+        color: images.color,
+        prompt: images.prompt,
+        authorId: images.authorId,
+        createdAt: images.createdAt,
+        updatedAt: images.updatedAt,
+        author: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          clerkId: users.clerkId,
+        },
+      })
+      .from(images)
+      .leftJoin(users, eq(images.authorId, users.id))
+      .where(eq(images.id, imageId));
 
-    const image = await populateUser(Image.findById(imageId));
+    if (!result.length) throw new Error('Image not found');
 
-    if (!image) throw new Error('Image not found');
-
-    return JSON.parse(JSON.stringify(image));
+    return result[0];
   } catch (error) {
     handleError(error);
   }
 }
 
-// GET IMAGES
+/**
+ * Get all images with pagination and optional search
+ */
 export async function getAllImages({
   limit = 9,
   page = 1,
@@ -100,8 +162,6 @@ export async function getAllImages({
   searchQuery?: string;
 }) {
   try {
-    await connectToDatabase();
-
     cloudinary.config({
       cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
@@ -119,25 +179,95 @@ export async function getAllImages({
 
     const resourceIds = resources.map((resource: any) => resource.public_id);
 
-    let query = {};
+    const offset = (Number(page) - 1) * limit;
 
-    if (searchQuery) {
-      query = {
-        publicId: {
-          $in: resourceIds,
-        },
+    // Build query based on search
+    let imageList;
+    let totalImages: number;
+
+    if (searchQuery && resourceIds.length > 0) {
+      imageList = await db
+        .select({
+          id: images.id,
+          title: images.title,
+          transformationType: images.transformationType,
+          publicId: images.publicId,
+          secureURL: images.secureURL,
+          width: images.width,
+          height: images.height,
+          config: images.config,
+          transformationUrl: images.transformationUrl,
+          aspectRatio: images.aspectRatio,
+          color: images.color,
+          prompt: images.prompt,
+          authorId: images.authorId,
+          createdAt: images.createdAt,
+          updatedAt: images.updatedAt,
+          author: {
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            clerkId: users.clerkId,
+          },
+        })
+        .from(images)
+        .leftJoin(users, eq(images.authorId, users.id))
+        .where(inArray(images.publicId, resourceIds))
+        .orderBy(desc(images.updatedAt))
+        .limit(limit)
+        .offset(offset);
+
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(images)
+        .where(inArray(images.publicId, resourceIds));
+      totalImages = count;
+    } else if (searchQuery) {
+      // Search query but no Cloudinary results
+      return {
+        data: [],
+        totalPage: 0,
+        savedImages: 0,
       };
+    } else {
+      imageList = await db
+        .select({
+          id: images.id,
+          title: images.title,
+          transformationType: images.transformationType,
+          publicId: images.publicId,
+          secureURL: images.secureURL,
+          width: images.width,
+          height: images.height,
+          config: images.config,
+          transformationUrl: images.transformationUrl,
+          aspectRatio: images.aspectRatio,
+          color: images.color,
+          prompt: images.prompt,
+          authorId: images.authorId,
+          createdAt: images.createdAt,
+          updatedAt: images.updatedAt,
+          author: {
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            clerkId: users.clerkId,
+          },
+        })
+        .from(images)
+        .leftJoin(users, eq(images.authorId, users.id))
+        .orderBy(desc(images.updatedAt))
+        .limit(limit)
+        .offset(offset);
+
+      const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(images);
+      totalImages = count;
     }
 
-    const skipAmount = (Number(page) - 1) * limit;
-
-    const images = await populateUser(Image.find(query)).sort({ updatedAt: -1 }).skip(skipAmount).limit(limit);
-
-    const totalImages = await Image.find(query).countDocuments();
-    const savedImages = await Image.find().countDocuments();
+    const [{ savedImages }] = await db.select({ savedImages: sql<number>`count(*)` }).from(images);
 
     return {
-      data: JSON.parse(JSON.stringify(images)),
+      data: imageList,
       totalPage: Math.ceil(totalImages / limit),
       savedImages,
     };
@@ -146,23 +276,60 @@ export async function getAllImages({
   }
 }
 
-// GET IMAGES BY USER
-export async function getUserImages({ limit = 9, page = 1, userId }: { limit?: number; page: number; userId: string }) {
+/**
+ * Get images by user ID with pagination
+ */
+export async function getUserImages({
+  limit = 9,
+  page = 1,
+  userId,
+}: {
+  limit?: number;
+  page: number;
+  userId: number;
+}) {
   try {
-    await connectToDatabase();
+    const offset = (Number(page) - 1) * limit;
 
-    const skipAmount = (Number(page) - 1) * limit;
+    const imageList = await db
+      .select({
+        id: images.id,
+        title: images.title,
+        transformationType: images.transformationType,
+        publicId: images.publicId,
+        secureURL: images.secureURL,
+        width: images.width,
+        height: images.height,
+        config: images.config,
+        transformationUrl: images.transformationUrl,
+        aspectRatio: images.aspectRatio,
+        color: images.color,
+        prompt: images.prompt,
+        authorId: images.authorId,
+        createdAt: images.createdAt,
+        updatedAt: images.updatedAt,
+        author: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          clerkId: users.clerkId,
+        },
+      })
+      .from(images)
+      .leftJoin(users, eq(images.authorId, users.id))
+      .where(eq(images.authorId, userId))
+      .orderBy(desc(images.updatedAt))
+      .limit(limit)
+      .offset(offset);
 
-    const images = await populateUser(Image.find({ author: userId }))
-      .sort({ updatedAt: -1 })
-      .skip(skipAmount)
-      .limit(limit);
-
-    const totalImages = await Image.find({ author: userId }).countDocuments();
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(images)
+      .where(eq(images.authorId, userId));
 
     return {
-      data: JSON.parse(JSON.stringify(images)),
-      totalPages: Math.ceil(totalImages / limit),
+      data: imageList,
+      totalPages: Math.ceil(count / limit),
     };
   } catch (error) {
     handleError(error);

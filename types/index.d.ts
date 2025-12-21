@@ -32,13 +32,13 @@ declare type AddImageParams = {
     prompt: string | undefined;
     color: string | undefined;
   };
-  userId: string;
+  userId: number;
   path: string;
 };
 
 declare type UpdateImageParams = {
   image: {
-    _id: string;
+    id: number;
     title: string;
     publicId: string;
     transformationType: string;
@@ -51,7 +51,7 @@ declare type UpdateImageParams = {
     prompt: string | undefined;
     color: string | undefined;
   };
-  userId: string;
+  userId: number;
   path: string;
 };
 
@@ -76,7 +76,7 @@ declare type CheckoutTransactionParams = {
   plan: string;
   credits: number;
   amount: number;
-  buyerId: string;
+  buyerId: number;
 };
 
 declare type CreateTransactionParams = {
@@ -84,7 +84,7 @@ declare type CreateTransactionParams = {
   amount: number;
   credits: number;
   plan: string;
-  buyerId: string;
+  buyerId: number;
   createdAt: Date;
 };
 
@@ -115,10 +115,10 @@ declare type SearchParamProps = {
 
 declare type TransformationFormProps = {
   action: 'Add' | 'Update';
-  userId: string;
+  userId: number;
   type: TransformationTypeKey;
   creditBalance: number;
-  data?: IImage | null;
+  data?: any;
   config?: Transformations | null;
 };
 

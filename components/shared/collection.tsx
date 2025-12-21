@@ -16,11 +16,21 @@ import {
 } from '@/components/ui/pagination';
 
 import { transformationTypes } from '@/constants';
-import { IImage } from '@/lib/db/models/image.model';
 import { formUrlQuery } from '@/lib/utils';
+import type { Image as DbImage } from '@/lib/db/schema';
 
 import { Button } from '../ui/button';
 import { Search } from './search';
+
+// Extended image type with author info from JOIN
+type ImageWithAuthor = DbImage & {
+  author?: {
+    id: number;
+    firstName: string | null;
+    lastName: string | null;
+    clerkId: string;
+  } | null;
+};
 
 export const Collection = ({
   hasSearch = false,
@@ -28,7 +38,7 @@ export const Collection = ({
   totalPages = 1,
   page,
 }: {
-  images: IImage[];
+  images: ImageWithAuthor[];
   totalPages?: number;
   page: number;
   hasSearch?: boolean;
@@ -59,7 +69,7 @@ export const Collection = ({
       {images.length > 0 ? (
         <ul className="collection-list">
           {images.map((image) => (
-            <Card image={image} key={image._id.toString()} />
+            <Card image={image} key={image.id} />
           ))}
         </ul>
       ) : (
@@ -97,16 +107,16 @@ export const Collection = ({
   );
 };
 
-const Card = ({ image }: { image: IImage }) => {
+const Card = ({ image }: { image: ImageWithAuthor }) => {
   return (
     <li>
-      <Link href={`/transformations/${image._id}`} className="collection-card">
+      <Link href={`/transformations/${image.id}`} className="collection-card">
         <CldImage
           src={image.publicId}
           alt={image.title}
-          width={image.width}
-          height={image.height}
-          {...image.config}
+          width={image.width || 500}
+          height={image.height || 500}
+          {...(typeof image.config === 'object' && image.config !== null ? image.config : {})}
           loading="lazy"
           className="h-52 w-full rounded-[10px] object-cover"
           sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw"

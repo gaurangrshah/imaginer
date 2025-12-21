@@ -18,7 +18,7 @@ import { deleteImage } from '@/lib/actions/image.actions';
 
 import { Button } from '../ui/button';
 
-export const DeleteConfirmation = ({ imageId }: { imageId: string }) => {
+export const DeleteConfirmation = ({ imageId }: { imageId: number }) => {
   const [isPending, startTransition] = useTransition();
 
   return (

@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+
 import { auth } from '@clerk/nextjs';
 
 import { Header } from '@/components/shared/header';
@@ -8,12 +10,13 @@ import { getUserById } from '@/lib/actions/user.actions';
 
 export default async function AddTransformationTypePage({ params: { type } }: SearchParamProps) {
   const transformation = transformationTypes[type];
-  const { userId } = auth()
+  const { userId } = auth();
 
-  if (!userId) alert('You are not logged in')
+  if (!userId) redirect('/sign-in');
 
-  // if (!userId) return redirect('/sign-in')
-  const user = await getUserById(userId!)
+  const user = await getUserById(userId);
+  if (!user) redirect('/sign-in');
+
   return (
     <>
       <Header title={transformation.title} subtitle={transformation.subTitle} />
@@ -21,8 +24,8 @@ export default async function AddTransformationTypePage({ params: { type } }: Se
         <TransformationForm
           action="Add"
           type={transformation.type as TransformationTypeKey}
-          userId={user._id}
-          creditBalance={user?.creditBalance}
+          userId={user.id}
+          creditBalance={user.creditBalance || 0}
         />
       </section>
     </>

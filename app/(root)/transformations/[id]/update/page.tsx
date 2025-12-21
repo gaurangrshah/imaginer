@@ -15,7 +15,10 @@ const Page = async ({ params: { id } }: SearchParamProps) => {
   if (!userId) redirect("/sign-in");
 
   const user = await getUserById(userId);
-  const image = await getImageById(id);
+  if (!user) redirect("/sign-in");
+
+  const image = await getImageById(parseInt(id));
+  if (!image) redirect("/");
 
   const transformation =
     transformationTypes[image.transformationType as TransformationTypeKey];
@@ -27,10 +30,10 @@ const Page = async ({ params: { id } }: SearchParamProps) => {
       <section className="mt-10">
         <TransformationForm
           action="Update"
-          userId={user._id}
+          userId={user.id}
           type={image.transformationType as TransformationTypeKey}
-          creditBalance={user.creditBalance}
-          config={image.config}
+          creditBalance={user.creditBalance || 0}
+          config={image.config as Transformations | null}
           data={image}
         />
       </section>
